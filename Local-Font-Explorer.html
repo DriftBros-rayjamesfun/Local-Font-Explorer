@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Local Font Browser</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+    #controls {
+      margin-bottom: 20px;
+    }
+    .font-sample {
+      margin: 10px 0;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .font-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .font-name {
+      font-size: 12px;
+      color: #666;
+      flex-grow: 1;
+    }
+    #backToTop {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #0078d4;
+      color: white;
+      cursor: pointer;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      transition: opacity 0.3s;
+    }
+    #backToTop:hover {
+      background: #005fa3;
+    }
+    #toggleSelected {
+      margin-top: 10px;
+      padding: 8px 14px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      background: #444;
+      color: white;
+      cursor: pointer;
+      display: none;
+    }
+    #toggleSelected:hover {
+      background: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>Local Font Browser</h1>
+  <div><strong>Instructions:</strong> Save this file to your desktop or location of choice.  Right click the file, open with Google Chrome(Must use Google Chrome).  <br>Type the text you want each font to be shown in.  <br>Adjust font size if needed.  <br>Click Load Local Fonts button, allow Chrome to access your local fonts.  <br>Select the fonts you like, scroll back to top, click Show Selected Only button to see only selected fonts.  <br>Refresh page to start over.  <br>Enjoy!<br><br></div>
+  <div id="controls">
+    <label>
+      Preview Text: 
+      <input id="previewText" type="text" value="Type your text here">
+    </label>
+    <br><br>
+    <label>
+      Font Size: 
+      <input id="fontSize" type="number" value="48" min="8" max="200"> px
+    </label>
+    <br><br>
+    <button id="loadFonts">Load Local Fonts</button>
+    <button id="toggleSelected">Show Selected Only</button>
+  </div>
+
+  <div id="fontList"></div>
+  <button id="backToTop">↑ Back to Top</button>
+
+  <script>
+    let cachedFonts = [];
+    const selectedFonts = new Set();
+    let showSelectedOnly = false;
+
+    async function loadFonts() {
+      const fontList = document.getElementById("fontList");
+      fontList.innerHTML = "<p>Loading fonts...</p>";
+
+      try {
+        cachedFonts = await window.queryLocalFonts();
+        document.getElementById("toggleSelected").style.display = "inline-block";
+        renderFonts();
+      } catch (err) {
+        fontList.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+      }
+    }
+
+    function renderFonts() {
+      if (cachedFonts.length === 0) return;
+
+      const fontList = document.getElementById("fontList");
+      fontList.innerHTML = "";
+
+      const previewText = document.getElementById("previewText").value;
+      const fontSize = document.getElementById("fontSize").value;
+
+      cachedFonts.forEach(fontData => {
+        const isSelected = selectedFonts.has(fontData.fullName);
+        if (showSelectedOnly && !isSelected) return;
+
+        const div = document.createElement("div");
+        div.className = "font-sample";
+
+        const header = document.createElement("div");
+        header.className = "font-header";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = isSelected;
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) {
+            selectedFonts.add(fontData.fullName);
+          } else {
+            selectedFonts.delete(fontData.fullName);
+          }
+        });
+
+        const name = document.createElement("div");
+        name.className = "font-name";
+        name.textContent = `${fontData.fullName} (${fontData.postscriptName})`;
+
+        header.appendChild(checkbox);
+        header.appendChild(name);
+
+        const sample = document.createElement("div");
+        sample.textContent = previewText;
+        sample.style.fontFamily = `"${fontData.fullName}"`;
+        sample.style.fontSize = fontSize + "px";
+
+        div.appendChild(header);
+        div.appendChild(sample);
+        fontList.appendChild(div);
+      });
+    }
+
+    // Event bindings
+    document.getElementById("loadFonts").addEventListener("click", loadFonts);
+    document.getElementById("previewText").addEventListener("input", renderFonts);
+    document.getElementById("fontSize").addEventListener("input", renderFonts);
+
+    // Toggle show selected
+    document.getElementById("toggleSelected").addEventListener("click", () => {
+      showSelectedOnly = !showSelectedOnly;
+      document.getElementById("toggleSelected").textContent = showSelectedOnly
+        ? "Show All Fonts"
+        : "Show Selected Only";
+      renderFonts();
+    });
+
+    // Back to Top button logic
+    const backToTop = document.getElementById("backToTop");
+    window.addEventListener("scroll", () => {
+      backToTop.style.display = window.scrollY > 300 ? "block" : "none";
+    });
+    backToTop.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  </script>
+</body>
+</html>
